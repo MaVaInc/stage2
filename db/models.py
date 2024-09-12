@@ -33,12 +33,19 @@ class Task:
         if current_step < len(self.steps):
             return self.steps[current_step]
         return None
-class AccountStateModel(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    account_id = db.Column(db.String, nullable=False)
-    project_name = db.Column(db.String, nullable=False)
-    current_location = db.Column(db.String, nullable=True)
-    current_task = db.Column(db.String, nullable=True)
-    current_step = db.Column(db.Integer, nullable=True)
-    last_task_execution = db.Column(db.DateTime, nullable=True)
-    task_status = db.Column(db.String, nullable=True)
+
+
+from sqlalchemy import Column, Integer, String, JSON, DateTime
+from .database import Base
+
+
+class AccountState(Base):
+    __tablename__ = 'account_state'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    account_id = Column(String, unique=True, nullable=False)
+    project_name = Column(String, nullable=False)
+    game_state = Column(JSON)
+    task_data = Column(JSON)
+    last_updated = Column(DateTime)
+

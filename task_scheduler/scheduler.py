@@ -1,22 +1,22 @@
-from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime, timedelta
-
 class TaskScheduler:
-    def __init__(self, db, task_executor):
-        self.db = db
-        self.task_executor = task_executor
-        self.scheduler = BackgroundScheduler()
-        self.scheduler.start()
+    def __init__(self):
+        self.tasks = {}  # Храним задачи для каждого аккаунта
 
-    def schedule_task(self, account_id, project_name):
-        self.scheduler.add_job(
-            func=self.run_task,
-            trigger='interval',
-            hours=3,  # Интервал запуска задачи
-            args=[account_id, project_name]
-        )
+    def add_task(self, account_id, task_data):
+        self.tasks[account_id] = task_data
 
-    def run_task(self, account_id, project_name):
-        # Получаем текущее состояние и отправляем задачу на выполнение
-        state = self.db.get_account_state(account_id, project_name)
-        self.task_executor.process_task(account_id, project_name, state)
+    def get_task(self, account_id):
+        return self.tasks.get(account_id)
+
+    def update_task(self, account_id, current_step):
+        task = self.tasks.get(account_id)
+        if task:
+            task["current_step"] = current_step
+            self.tasks[account_id] = task
+
+    def is_task_ready(self, account_id):
+        # Логика для проверки, можно ли выполнять задачу (таймауты и время)
+        task = self.tasks.get(account_id)
+        if task and task.get("next_available_time", 0) < time.time():
+            return True
+        return False

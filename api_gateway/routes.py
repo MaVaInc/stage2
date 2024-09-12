@@ -1,20 +1,17 @@
 from flask import Blueprint, request, jsonify
-from flask_cors import CORS
-from api_gateway.app import app
-from message_queue.queue import send_task_to_queue
+from execution_engine.executor import QuestExecutor
 
-bp = Blueprint('routes', __name__)
-CORS(app)
+routes = Blueprint('routes', __name__)
 
-@app.route('/receive_state', methods=['POST'])
-def receive_state():
+@routes.route('/process_state', methods=['POST'])
+def process_state():
     data = request.json
-    account_id = data['account_id']
-    project_name = data['project_name']
-    state = data['state']
+    account_id = data.get("account_id")
+    project_name = data.get("project_name")
+    game_state = data.get("game_state")
+    task_data = data.get("task_data")
 
-    # Передаем данные в TaskExecutor для обработки
-    action = task_executor.process_task(account_id, project_name, state)
+    executor = QuestExecutor(account_id, project_name, task_data)
+    action = executor.execute_next_step(game_state)
 
     return jsonify(action)
-
