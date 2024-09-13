@@ -1,7 +1,12 @@
+# utils/logger.py
+
 import logging
 
-# Настраиваем логирование
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, filename='app.log', filemode='a',
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
-def log_action(action, details):
-    logging.info(f"Action: {action}, Details: {details}")
+def log_info(message):
+    logging.info(message)
+
+def log_error(message):
+    logging.error(message)

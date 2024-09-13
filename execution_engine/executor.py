@@ -1,77 +1,103 @@
-class TaskExecutor:
-    def __init__(self, db):
-        self.db = db
+# execution_engine/executor.py
+from account_manager.accounts import AccountManager
 
 
+class Executor:
+    def __init__(self):
+        self.account_manager = AccountManager()
 
-    def process_task(self, account_id, project_name, state):
-        current_task = state['current_task']
-        current_step = state['current_step']
-        location = state['location']
+    def process_state(self, account_id, project_name, state):
+        account_state = self.account_manager.get_account_state(account_id, project_name)
+        location = state.get('location')
+        elements = state.get('elements')
+        balance = state.get('balance')  # New: Capture balance info
 
-        steps = self.get_steps_for_task(current_task)
-        next_step = steps[current_step]
+        # Update balance
+        if balance:
+            account_state['balance'] = balance
+            self.account_manager.update_account_state(account_id, project_name, account_state)
 
-        if location != next_step['location']:
-            # Отправляем команду на перемещение
-            return {
-                'action': 'navigate',
-                'location': next_step['location']
+        # Determine current task and step
+        current_task = account_state.get('current_task')
+        current_step = account_state.get('current_step', 0)
+
+        tasks = self.load_tasks(project_name)
+
+        # If no current task, select the next one
+        if not current_task:
+            current_task = self.select_next_task(account_id, project_name)
+            if not current_task:
+                return {'status': 'all_tasks_completed'}
+            account_state['current_task'] = current_task
+            account_state['current_step'] = 0
+            self.account_manager.update_account_state(account_id, project_name, account_state)
+
+        # Fetch the current task's steps
+        task_info = tasks.get('tasks', {}).get(current_task)
+        if not task_info:
+            # Handle missing task definition
+            account_state['current_task'] = None
+            self.account_manager.update_account_state(account_id, project_name, account_state)
+            return {'status': 'task_not_found'}
+
+        steps = task_info.get('steps', [])
+        if current_step >= len(steps):
+            # Task completed
+            account_state['current_task'] = None
+            account_state['current_step'] = 0
+            self.account_manager.update_account_state(account_id, project_name, account_state)
+            # Perform post-task action
+            post_action = task_info.get('post_action', 'return_home')
+            if post_action == 'return_home':
+                return self.navigate_home()
+            return {'status': 'task_completed'}
+
+        # Get current step details
+        step_info = steps[current_step]
+
+        # Check if we are in the correct location
+        if location != step_info['location']:
+            # Navigate to the required location
+            navigation_task = self.get_navigation_task(location, step_info['location'])
+            if navigation_task:
+                # Initiate navigation
+                account_state['current_task'] = navigation_task
+                account_state['current_step'] = 0
+                self.account_manager.update_account_state(account_id, project_name, account_state)
+                return self.process_state(account_id, project_name, state)
+            else:
+                return {'status': 'navigation_task_not_found'}
+
+        # Check for trigger element
+        trigger_element = self.find_element(elements, step_info['trigger_element'])
+        if trigger_element:
+            # Perform the action
+            action_response = {
+                'action': step_info['action'],
+                'element_xpath': step_info['trigger_element']['xpath']
             }
-
-        # Выполняем действие на текущем шаге
-        return {
-            'action': next_step['action'],
-            'element_xpath': next_step['element_xpath']
-        }
-
-    def get_steps_for_task(self, task):
-        tasks = {
-            'complete_quest': [
-                {'location': 'main_screen', 'action': 'click', 'element_xpath': '/path/to/quest_tab'},
-                {'location': 'quest_screen', 'action': 'click', 'element_xpath': '/path/to/complete_button'},
-                {'location': 'quest_screen', 'action': 'verify', 'element_xpath': '/path/to/verification_element'},
-                {'location': 'main_screen', 'action': 'navigate', 'element_xpath': '/path/to/home_button'}
-            ],
-            # Добавить другие задачи
-        }
-        return tasks.get(task, [])
-    def verify_task_completion(self, task, state):
-        if task == 'complete_quest':
-            # Проверяем, есть ли элемент, подтверждающий выполнение
-            completed_element = state['elements'].get('quest_complete')
-            if completed_element and completed_element['exists']:
-                return True
-        return False
-
-class QuestExecutor:
-    def __init__(self, account_id, project_name, task_data):
-        self.account_id = account_id
-        self.project_name = project_name
-        self.task_data = task_data
-        self.steps = self.task_data.get("steps", [])  # Микро-шаги выполнения задачи
-        self.current_step = task_data.get("current_step", 0)
-
-    def execute_next_step(self, game_state):
-        """Выполняем следующий шаг квеста"""
-        if self.current_step >= len(self.steps):
-            return {"status": "completed"}
-
-        step = self.steps[self.current_step]
-        element_info = self.find_element(step, game_state)
-        if element_info:
-            # Если элемент найден, возвращаем действие для фронта
-            return {
-                "action": step["action"],
-                "element_xpath": element_info["xpath"]
-            }
+            # Update step and possibly wait for confirmation
+            account_state['current_step'] += 1
+            self.account_manager.update_account_state(account_id, project_name, account_state)
+            return action_response
         else:
-            # Если элемент не найден, возможно, требуется перейти на другую вкладку
-            return {"status": "waiting", "message": "Element not found"}
+            return {'status': 'waiting_for_trigger_element'}
 
-    def find_element(self, step, game_state):
-        """Находим элемент в состоянии игры"""
-        for element in game_state["elements"]:
-            if element["xpath"] == step["xpath"] and element["value"] == step.get("expected_value", ""):
-                return element
-        return None
+    def get_navigation_task(self, current_location, target_location):
+        # Logic to select the appropriate navigation task
+        # For simplicity, assume navigation tasks are named 'navigate_from_{current}_to_{target}'
+        task_name = f'navigate_from_{current_location}_to_{target_location}'
+        tasks = self.load_tasks()
+        if task_name in tasks.get('navigation_tasks', {}):
+            return task_name
+        # If no specific navigation task, return a default one
+        return 'default_navigation_task'
+
+    def navigate_home(self):
+        # Logic to navigate back to the home screen
+        return {
+            'action': 'navigate',
+            'location': 'main_screen'
+        }
+
+    # Rest of the methods remain the same

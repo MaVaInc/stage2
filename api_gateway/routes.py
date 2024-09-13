@@ -1,17 +1,17 @@
+# api_gateway/routes.py
+
 from flask import Blueprint, request, jsonify
-from execution_engine.executor import QuestExecutor
+from execution_engine.executor import Executor
 
-routes = Blueprint('routes', __name__)
+api_routes = Blueprint('api_routes', __name__)
+executor = Executor()
 
-@routes.route('/process_state', methods=['POST'])
+@api_routes.route('/process_state', methods=['POST'])
 def process_state():
     data = request.json
-    account_id = data.get("account_id")
-    project_name = data.get("project_name")
-    game_state = data.get("game_state")
-    task_data = data.get("task_data")
+    account_id = data.get('account_id')
+    project_name = data.get('project_name')
+    state = data.get('state')
 
-    executor = QuestExecutor(account_id, project_name, task_data)
-    action = executor.execute_next_step(game_state)
-
+    action = executor.process_state(account_id, project_name, state)
     return jsonify(action)

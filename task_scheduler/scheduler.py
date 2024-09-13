@@ -1,22 +1,36 @@
+# task_scheduler/scheduler.py
+
+import time
+from account_manager.accounts import AccountManager
+from datetime import datetime, timedelta
+from config import TASK_SCHEDULER_INTERVAL
+from utils.logger import log_info
+
 class TaskScheduler:
     def __init__(self):
-        self.tasks = {}  # Храним задачи для каждого аккаунта
+        self.account_manager = AccountManager()
 
-    def add_task(self, account_id, task_data):
-        self.tasks[account_id] = task_data
+    def run(self):
+        while True:
+            self.schedule_tasks()
+            time.sleep(TASK_SCHEDULER_INTERVAL)
 
-    def get_task(self, account_id):
-        return self.tasks.get(account_id)
+    def schedule_tasks(self):
+        # Получаем все аккаунты из базы данных
+        from db.database import session
+        from db.models import AccountState
 
-    def update_task(self, account_id, current_step):
-        task = self.tasks.get(account_id)
-        if task:
-            task["current_step"] = current_step
-            self.tasks[account_id] = task
+        accounts = session.query(AccountState).all()
+        for account in accounts:
+            # Проверяем, нужно ли запланировать новую задачу
+            # Например, если текущая задача завершена
+            if not account.current_task:
+                # Планируем новую задачу
+                account.current_task = 'daily_quest'  # Можно выбрать задачу по логике
+                account.current_step = 0
+                session.commit()
+                log_info(f"Scheduled new task for account {account.account_id}")
 
-    def is_task_ready(self, account_id):
-        # Логика для проверки, можно ли выполнять задачу (таймауты и время)
-        task = self.tasks.get(account_id)
-        if task and task.get("next_available_time", 0) < time.time():
-            return True
-        return False
+if __name__ == '__main__':
+    scheduler = TaskScheduler()
+    scheduler.run()
