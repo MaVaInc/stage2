@@ -13,26 +13,28 @@ class AccountManager:
             return {
                 'current_task': account_state.current_task,
                 'current_step': account_state.current_step,
-                'location': account_state.location
+                'location': account_state.location,
+                'balance': account_state.balance,
+                'stats': account_state.stats,
+                'state_data': account_state.state_data or {}
             }
         else:
-            # Если аккаунт не найден, создаем новый
+            # Создаем новое состояние аккаунта, если не найдено
             new_account_state = AccountState(
                 account_id=account_id,
                 project_name=project_name,
-                current_task=None,
-                current_step=0,
-                location=None
+                state_data={}
             )
             session.add(new_account_state)
             session.commit()
             return {
                 'current_task': None,
                 'current_step': 0,
-                'location': None
+                'location': None,
+                'balance': None,
+                'stats': None,
+                'state_data': {}
             }
-
-    # account_manager/accounts.py
 
     def update_account_state(self, account_id, project_name, state):
         account_state = session.query(AccountState).filter_by(
@@ -45,4 +47,5 @@ class AccountManager:
             account_state.location = state.get('location')
             account_state.balance = state.get('balance')
             account_state.stats = state.get('stats')
+            account_state.state_data = state.get('state_data')
             session.commit()

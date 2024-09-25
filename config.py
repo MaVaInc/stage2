@@ -1,5 +1,7 @@
-# config.py
+# config.py.example
 
-DATABASE_URI = 'sqlite:///accounts.db'
-API_GATEWAY_PORT = 5001
-TASK_SCHEDULER_INTERVAL = 3600  # В секундах (1 час)
+# Строка подключения к базе данных
+DATABASE_URI = 'sqlite:///your_database.db'  # Замените на ваш URI базы данных
+
+# Интервал выполнения планировщика задач (в секундах)
+TASK_SCHEDULER_INTERVAL = 60  # Например, 60 секунд

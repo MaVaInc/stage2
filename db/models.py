@@ -6,11 +6,13 @@ from .database import Base
 class AccountState(Base):
     __tablename__ = 'account_states'
 
-    id = Column(Integer)
-    account_id = Column(String, primary_key=True)
-    project_name = Column(String)
+    id = Column(Integer, primary_key=True)
+    account_id = Column(String, unique=True, nullable=False)
+    project_name = Column(String, nullable=False)
     current_task = Column(String)
-    current_step = Column(Integer)
+    current_step = Column(Integer, default=0)
     location = Column(String)
-    balance = Column(JSON)  # Новое поле для хранения баланса в формате JSON
-    stats = Column(JSON)    # Новое поле для дополнительной статистики
+    balance = Column(JSON)  # Хранит баланс в формате JSON
+    stats = Column(JSON)    # Дополнительные статистические данные
+    state_data = Column(JSON)  # Хранит дополнительные данные состояния
+    current_state = Column(String, default='initial')  # Текущее состояние FSM
