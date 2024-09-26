@@ -2,11 +2,18 @@
 
 import logging
 
-logging.basicConfig(level=logging.INFO, filename='app.log', filemode='a',
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+def setup_logger():
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
 
-def log_info(message):
-    logging.info(message)
+    # Консольный обработчик
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
 
-def log_error(message):
-    logging.error(message)
+    # Форматтер
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+
+    # Добавляем обработчик к логгеру
+    if not logger.handlers:
+        logger.addHandler(ch)

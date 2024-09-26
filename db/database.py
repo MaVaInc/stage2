@@ -1,11 +1,14 @@
 # db/database.py
-
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from add_user import DATABASE_URL
+from utils.config import DATABASE_URI
 
 engine = create_engine(DATABASE_URI)
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
-Session = sessionmaker(bind=engine)
-session = Session()
+
+def init_db():
+    import db.models
+    Base.metadata.create_all(bind=engine)
+
